@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -29,25 +30,30 @@ func run() error {
 		return fmt.Errorf("cannot initialize Font: %v", err)
 	}
 
-	win, ren, err := sdl.CreateWindowAndRenderer(1024, 768, sdl.WINDOW_SHOWN)
+	win, ren, err := sdl.CreateWindowAndRenderer(
+		ConstScreenWidth,
+		ConstScreenHeight,
+		sdl.WINDOW_SHOWN,
+	)
 	if err != nil {
 		return fmt.Errorf("cannot create window renderer: %v", err)
 	}
 	defer win.Destroy()
 
-	err = drawTitle(ren)
+	scene, err := newScene(ren)
 	if err != nil {
-		return fmt.Errorf("cannot draw title: %v", err)
+		return fmt.Errorf("cannot create a scene")
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-	err = drawBackground(ren)
-	if err != nil {
-		return fmt.Errorf("cannot draw background: %v", err)
-	}
-
-	time.Sleep(time.Second * 3)
-
-	return nil
+	// select {
+	// case err = <-scene.run(ctx, ren):
+	// 	return err
+	// case <-time.After(5 * time.Second):
+	// 	return nil
+	// }
+	return <-scene.run(ctx, ren)
 }
 
 func drawBackground(ren *sdl.Renderer) error {
