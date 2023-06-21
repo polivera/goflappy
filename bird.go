@@ -7,7 +7,14 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const gravity = 3.3
+const (
+	speed   = 30
+	gravity = 3.3
+)
+
+// Patch to handle the fact that mouse down and mouse up 
+// are the same event
+var isFirstJump = true
 
 type bird struct {
 	time     uint8
@@ -56,4 +63,11 @@ func (br *bird) paint() error {
 		return fmt.Errorf("could not create scene: %v", err)
 	}
 	return nil
+}
+
+func (br *bird) jump() {
+	if isFirstJump {
+		br.speed = -speed
+	}
+	isFirstJump = !isFirstJump
 }
