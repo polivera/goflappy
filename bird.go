@@ -7,11 +7,13 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+const gravity = 3.3
+
 type bird struct {
 	time     uint8
 	textures []*sdl.Texture
 	ren      *sdl.Renderer
-	y        int32
+	y, speed float64
 }
 
 // newBird
@@ -31,14 +33,20 @@ func newBird(ren *sdl.Renderer) (*bird, error) {
 
 func (br *bird) paint() error {
 	br.time++
-	br.y--
+	br.y -= br.speed
+	br.speed += gravity
+	if br.y < -ConstScreenHeight {
+		br.speed *= -1
+		br.y = -ConstScreenHeight + 43
+	}
+
 	if br.time > 255 {
 		br.time = 0
 	}
 
 	rect := &sdl.Rect{
 		X: 20,
-		Y: ((ConstScreenHeight - br.y) - 43) / 2,
+		Y: ((ConstScreenHeight - int32(br.y)) - 43) / 2,
 		W: 50,
 		H: 43,
 	}

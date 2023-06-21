@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/veandco/go-sdl2/img"
@@ -26,7 +26,6 @@ func newScene(ren *sdl.Renderer) (*scene, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot load bird textures: %v:", err)
 	}
-	
 
 	return &scene{
 		bg:    bgTexture,
@@ -35,16 +34,17 @@ func newScene(ren *sdl.Renderer) (*scene, error) {
 }
 
 // run
-func (s *scene) run(ctx context.Context, ren *sdl.Renderer) <-chan error {
+func (s *scene) run(events <-chan sdl.Event, ren *sdl.Renderer) <-chan error {
 	errc := make(chan error)
 
 	go func() {
 		defer close(errc)
-		for range time.Tick(100 * time.Millisecond) {
+		ticker := time.Tick(50 * time.Millisecond)
+		for {
 			select {
-			case <-ctx.Done():
-				return
-			default:
+			case e := <-events:
+				log.Printf("event %T", e)
+			case <-ticker:
 				if err := s.paint(ren); err != nil {
 					errc <- err
 				}

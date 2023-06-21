@@ -1,10 +1,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
+	"runtime"
 
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
@@ -44,16 +43,18 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("cannot create a scene")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
-	// select {
-	// case err = <-scene.run(ctx, ren):
-	// 	return err
-	// case <-time.After(5 * time.Second):
-	// 	return nil
-	// }
-	return <-scene.run(ctx, ren)
+	events := make(chan sdl.Event)
+	errc := scene.run(events, ren)
+
+	runtime.LockOSThread()
+	for {
+		select {
+		case events <- sdl.WaitEvent():
+		case err := <-errc:
+			return err
+		}
+	}
 }
 
 func drawBackground(ren *sdl.Renderer) error {
