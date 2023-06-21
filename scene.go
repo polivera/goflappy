@@ -14,6 +14,7 @@ type scene struct {
 	bg    *sdl.Texture
 	ren   *sdl.Renderer
 	birds *bird
+	pipe  *pipe
 }
 
 // newScene
@@ -25,13 +26,19 @@ func newScene(ren *sdl.Renderer) (*scene, error) {
 
 	birds, err := newBird(ren)
 	if err != nil {
-		return nil, fmt.Errorf("cannot load bird textures: %v:", err)
+		return nil, fmt.Errorf("cannot load bird textures: %v", err)
+	}
+
+	pipe, err := newPipe(ren)
+	if err != nil {
+		return nil, fmt.Errorf("cannot load pipe texture: %v", err)
 	}
 
 	return &scene{
 		bg:    bgTexture,
 		ren:   ren,
 		birds: birds,
+		pipe:  pipe,
 	}, nil
 }
 
@@ -39,7 +46,7 @@ func newScene(ren *sdl.Renderer) (*scene, error) {
 func (s *scene) run(events <-chan sdl.Event, ren *sdl.Renderer) <-chan error {
 	errc := make(chan error)
 
-	if err := s.drawTitle(); err != nil {
+	if err := s.drawTitle("Flappy Stuff"); err != nil {
 		errc <- err
 	} else {
 		time.Sleep(2 * time.Second)
@@ -54,6 +61,12 @@ func (s *scene) run(events <-chan sdl.Event, ren *sdl.Renderer) <-chan error {
 			case e := <-events:
 				done = s.handleEvent(e)
 			case <-ticker:
+				s.update()
+				if s.birds.isDead() {
+					s.drawTitle("Game Over")
+					time.Sleep(time.Second)
+					s.restart()
+				}
 				if err := s.paint(ren); err != nil {
 					errc <- err
 				}
@@ -69,13 +82,14 @@ func (s *scene) handleEvent(ev sdl.Event) bool {
 		return true
 	case *sdl.MouseButtonEvent:
 		s.birds.jump()
+	case *sdl.WindowEvent, *sdl.MouseMotionEvent, *sdl.AudioDeviceEvent:
 	default:
 		fmt.Printf("unkown event %T\n", ev)
 	}
 	return false
 }
 
-func (s *scene) drawTitle() error {
+func (s *scene) drawTitle(title string) error {
 	s.ren.Clear()
 	defer s.ren.Present()
 
@@ -90,7 +104,7 @@ func (s *scene) drawTitle() error {
 		G: 0x66,
 		B: 0x99,
 	}
-	sfc, err := fnt.RenderUTF8Solid("Flappy Gopher", color)
+	sfc, err := fnt.RenderUTF8Solid(title, color)
 	if err != nil {
 		return fmt.Errorf("cannot get surface for the font:  %v", err)
 	}
@@ -109,6 +123,11 @@ func (s *scene) drawTitle() error {
 	return nil
 }
 
+func (s *scene) update() {
+	s.birds.update()
+	s.pipe.update()
+}
+
 // paint
 func (s *scene) paint(ren *sdl.Renderer) error {
 	ren.Clear()
@@ -121,10 +140,21 @@ func (s *scene) paint(ren *sdl.Renderer) error {
 		return fmt.Errorf("could not create bird on scene: %v", err)
 	}
 
+	if err := s.pipe.paint(); err != nil {
+		return fmt.Errorf("could not create pipe on scene: %v", err)
+	}
+
 	ren.Present()
 	return nil
 }
 
+func (s *scene) restart() {
+	s.birds.restart()
+	s.pipe.restart()
+}
+
 func (s *scene) destroy() {
 	s.bg.Destroy()
+	s.pipe.destroy()
+	s.birds.destroy()
 }
