@@ -23,7 +23,11 @@ type bird struct {
 	time     uint8
 	textures []*sdl.Texture
 	ren      *sdl.Renderer
-	y, speed float64
+	speed    float64
+	posY     int32
+	posX     int32
+	width    int32
+	height   int32
 }
 
 // newBird
@@ -38,15 +42,22 @@ func newBird(ren *sdl.Renderer) (*bird, error) {
 		}
 		textures = append(textures, texture)
 	}
-	return &bird{textures: textures, ren: ren, y: ConstBirdStartingPoint}, nil
+	return &bird{
+		textures: textures,
+		ren:      ren,
+		posX:     20,
+		posY:     ConstBirdStartingPoint,
+		width:    50,
+		height:   43,
+	}, nil
 }
 
 func (br *bird) update() {
 	br.mu.Lock()
 	br.time++
-	br.y -= br.speed
+	br.posY -= int32(br.speed)
 	br.speed += constGravity
-	if br.y < -ConstScreenHeight {
+	if br.posY < -ConstScreenHeight {
 		br.dead = true
 	}
 
@@ -61,11 +72,11 @@ func (br *bird) paint() error {
 	br.mu.RLock()
 
 	rect := &sdl.Rect{
-		X: 20,
+		X: br.posX,
 		// TODO: Shouldn't this be using 0 .. n instead of -n .. n
-		Y: ((ConstScreenHeight - int32(br.y)) - 43) / 2,
-		W: 50,
-		H: 43,
+		Y: ((ConstScreenHeight - int32(br.posY)) - br.height) / 2,
+		W: br.width,
+		H: br.height,
 	}
 
 	ind := br.time % uint8(len(br.textures))
@@ -75,6 +86,22 @@ func (br *bird) paint() error {
 
 	br.mu.RUnlock()
 	return nil
+}
+
+func (br *bird) touch(pp *pipe) {
+	br.mu.RLock()
+	pp.mu.RLock()
+
+	// TODO: Better presition on pipe collition
+	fmt.Printf("BirdX %d - PipeX %d | BirdY %d - Pipe Y %d\n", br.posX, pp.posX, -br.posY, pp.posY)
+	if br.posX >= pp.posX && br.posX <= pp.posX+pp.width {
+		if -br.posY <= pp.posY {
+			br.dead = true
+		}
+	}
+
+	pp.mu.RUnlock()
+	br.mu.RUnlock()
 }
 
 func (br *bird) jump() {
@@ -92,7 +119,7 @@ func (br *bird) isDead() bool {
 
 func (br *bird) restart() {
 	br.mu.Lock()
-	br.y = ConstBirdStartingPoint
+	br.posY = ConstBirdStartingPoint
 	br.dead = false
 	br.time = 0
 	br.speed = 0

@@ -124,8 +124,10 @@ func (s *scene) drawTitle(title string) error {
 }
 
 func (s *scene) update() {
-	s.birds.update()
 	s.pipe.update()
+	// If we update pipe before we can pass it as parameter to the update
+	s.birds.update()
+	s.birds.touch(s.pipe)
 }
 
 // paint
